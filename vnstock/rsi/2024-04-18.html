@@ -1,0 +1,288 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scatter Chart with Movement Indicators</title>
+  <link rel="stylesheet" href="https://unpkg.com/vue-select@3.11.2/dist/vue-select.css">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+    }
+
+    #app {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      max-width: 1300px;
+      margin: 20px auto;
+    }
+
+    canvas {
+      margin-top: 20px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    p {
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue-select@3.11.2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+</head>
+<body>
+
+<div id="app">
+  <nav class="navbar navbar-expand-lg">
+    <a class="navbar-brand" href="#">Chứng khoán Việt Nam</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown"
+            aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNavDropdown">
+      <ul class="navbar-nav">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink1" role="button"
+             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Momentum Indicators
+          </a>
+          <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+            <a class="dropdown-item" href="#">Relative Strength Index (RSI)</a>
+            <a class="dropdown-item" href="#">Moving Average Convergence Divergence (MACD)</a>
+            <a class="dropdown-item" href="#">Stochastic Oscillator</a>
+            <a class="dropdown-item" href="#">Commodity Channel Index (CCI)</a>
+            <a class="dropdown-item" href="#">Rate of Change (ROC)</a>
+          </div>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink2" role="button"
+             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Volume Indicators
+          </a>
+          <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+            <a class="dropdown-item" href="#">On-Balance Volume (OBV)</a>
+            <a class="dropdown-item" href="#">Accumulation/Distribution Line</a>
+            <a class="dropdown-item" href="#">Volume Oscillator</a>
+            <a class="dropdown-item" href="#">Chaikin Money Flow (CMF)</a>
+            <a class="dropdown-item" href="#">Volume Rate of Change</a>
+          </div>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink3" role="button"
+             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Volatility Indicators
+          </a>
+          <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+            <a class="dropdown-item" href="#">Average True Range (ATR)</a>
+            <a class="dropdown-item" href="#">Bollinger Bands</a>
+            <a class="dropdown-item" href="#">Keltner Channels</a>
+            <a class="dropdown-item" href="#">Donchian Channels</a>
+            <a class="dropdown-item" href="#">Volatility Chaikin</a>
+          </div>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink4" role="button"
+             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Cycle Indicators
+          </a>
+          <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+            <a class="dropdown-item" href="#">Detrended Price Oscillator (DPO)</a>
+            <a class="dropdown-item" href="#">Schaff Trend Cycle</a>
+            <a class="dropdown-item" href="#">Elliott Wave Theory</a>
+            <a class="dropdown-item" href="#">Fibonacci Time Zones</a>
+            <a class="dropdown-item" href="#">Gann Fan</a>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <v-select multiple :options="tagOptions" v-model="selectedTags" placeholder="Chọn mã CP"></v-select>
+  <div>
+    <button class="btn-sm m-1" @click="clearSelectedTags">VN30</button>
+    <button class="btn-sm m-1" @click="clearSelectedTags">VN100</button>
+    <button class="btn-sm m-1" @click="clearSelectedTags">VNDIAMOND</button>
+    <button class="btn-sm m-1" @click="clearSelectedTags">HNX30</button>
+    <button class="btn-sm m-1" @click="clearSelectedTags">Toàn thị trường</button>
+  </div>
+  <p>Cập nhật lần cuối: 2024-04-18T04:33:26.473Z</p>
+
+  <canvas id="myScatterChart"></canvas>
+  <ul>
+    <li>
+      Đường kẻ đứt màu đỏ thể hiện giá trị của mã cổ phiếu giảm so với ngày trước đó, đường kẻ đứt màu xanh thể
+      hiện giá trị tăng so với ngày trước đó.
+    </li>
+    <li>
+      Chấm màu đỏ thể hiện giá trị phân tích kỹ thuật của mã cổ phiếu hiện tại
+    </li>
+  </ul>
+</div>
+
+<script>
+  const footer = (context) => {
+    let sum = 0;
+
+    context.forEach(function(tooltipItem) {
+      sum += tooltipItem.parsed.y;
+    });
+    return 'Sum: ' + sum;
+  };
+  Vue.component('v-select', VueSelect.VueSelect);
+
+  new Vue({
+    el: '#app',
+    data: {
+      originalData: [{"name":"VCB","value":"38.08","change":"2.38"},{"name":"BID","value":"43.28","change":"0.00"},{"name":"GAS","value":"32.19","change":"-0.98"},{"name":"VHM","value":"45.43","change":"-0.81"},{"name":"CTG","value":"44.78","change":"-3.47"},{"name":"VIC","value":"37.94","change":"-7.34"},{"name":"ACV","value":"58.28","change":"-0.52"},{"name":"HPG","value":"32.66","change":"0.00"},{"name":"TCB","value":"55.96","change":"0.23"},{"name":"VPB","value":"43.05","change":"0.91"},{"name":"FPT","value":"48.12","change":"-1.59"},{"name":"VNM","value":"33.37","change":"6.07"},{"name":"GVR","value":"42.02","change":"-1.81"},{"name":"MBB","value":"46.55","change":"-2.55"},{"name":"ACB","value":"45.04","change":"-0.72"},{"name":"MSN","value":"32.42","change":"3.49"},{"name":"VGI","value":"63.38","change":"-1.62"},{"name":"BCM","value":"19.34","change":"-0.65"},{"name":"MWG","value":"48.71","change":"-1.86"},{"name":"SAB","value":"29.18","change":"-4.41"},{"name":"HDB","value":"41.11","change":"-8.98"},{"name":"BSR","value":"41.99","change":"-4.13"},{"name":"VIB","value":"41.62","change":"3.50"},{"name":"MCH","value":"58.23","change":"0.00"},{"name":"SSI","value":"35.22","change":"-1.59"},{"name":"VJC","value":"55.06","change":"-10.41"},{"name":"VRE","value":"31.21","change":"0.52"},{"name":"STB","value":"29.89","change":"1.19"},{"name":"SSB","value":"51.65","change":"6.15"},{"name":"PLX","value":"35.19","change":"-4.29"},{"name":"VEA","value":"36.74","change":"0.00"},{"name":"LPB","value":"71.80","change":"0.00"},{"name":"DGC","value":"43.28","change":"-0.43"},{"name":"SHB","value":"50.41","change":"-3.67"},{"name":"TPB","value":"30.39","change":"-2.88"},{"name":"NVL","value":"33.98","change":"0.73"},{"name":"HVN","value":"76.65","change":"0.00"},{"name":"BVH","value":"27.89","change":"4.59"},{"name":"PNJ","value":"43.14","change":"-3.49"},{"name":"EIB","value":"31.75","change":"2.65"},{"name":"OCB","value":"35.16","change":"3.89"},{"name":"MSB","value":"30.10","change":"-1.89"},{"name":"VND","value":"24.26","change":"-1.33"},{"name":"POW","value":"36.63","change":"5.32"},{"name":"KDH","value":"35.91","change":"-0.79"},{"name":"REE","value":"40.23","change":"3.34"},{"name":"VGC","value":"35.26","change":"3.83"},{"name":"KBC","value":"33.22","change":"-0.83"},{"name":"SSH","value":"56.74","change":"4.15"},{"name":"GMD","value":"57.89","change":"7.94"},{"name":"PGV","value":"26.87","change":"7.32"},{"name":"VEF","value":"46.29","change":"-3.96"},{"name":"HCM","value":"37.86","change":"-3.00"},{"name":"VNZ","value":"32.75","change":"2.23"},{"name":"FOX","value":"36.25","change":"1.23"},{"name":"MVN","value":"44.48","change":"-6.62"},{"name":"PVS","value":"45.43","change":"-3.33"},{"name":"GEX","value":"28.51","change":"-0.73"},{"name":"DIG","value":"42.28","change":"-1.73"},{"name":"VCI","value":"36.23","change":"-1.70"},{"name":"IDC","value":"34.20","change":"3.27"},{"name":"FRT","value":"44.20","change":"-1.25"},{"name":"PVD","value":"39.02","change":"-3.05"},{"name":"MSR","value":"30.14","change":"-0.86"},{"name":"QNS","value":"31.96","change":"-0.43"},{"name":"DCM","value":"33.10","change":"-0.48"},{"name":"DNH","value":"57.47","change":"0.00"},{"name":"KDC","value":"38.66","change":"-10.46"},{"name":"HUT","value":"27.37","change":"-2.88"},{"name":"VHC","value":"37.79","change":"1.30"},{"name":"NLG","value":"28.42","change":"-2.30"},{"name":"SHS","value":"45.67","change":"-1.01"},{"name":"PDR","value":"35.41","change":"-2.12"},{"name":"DHG","value":"43.02","change":"-7.47"},{"name":"IDP","value":"50.06","change":"0.00"},{"name":"DXG","value":"33.14","change":"-1.29"},{"name":"CTR","value":"43.82","change":"-1.04"},{"name":"NAB","value":"37.36","change":"0.00"},{"name":"HSG","value":"29.82","change":"-0.30"},{"name":"VPI","value":"35.00","change":"2.43"},{"name":"DPM","value":"33.33","change":"0.00"},{"name":"THD","value":"42.57","change":"0.00"},{"name":"VCG","value":"20.74","change":"-0.44"},{"name":"VIX","value":"32.16","change":"-1.97"},{"name":"MBS","value":"45.54","change":"-2.25"},{"name":"FTS","value":"41.20","change":"-1.35"},{"name":"BSI","value":"38.08","change":"-1.57"},{"name":"SIP","value":"38.23","change":"1.91"},{"name":"KSF","value":"52.80","change":"4.54"},{"name":"CEO","value":"26.65","change":"0.00"},{"name":"PVI","value":"41.11","change":"-1.83"},{"name":"OIL","value":"27.07","change":"0.00"},{"name":"VSH","value":"47.34","change":"4.27"},{"name":"LGC","value":"52.76","change":"0.00"},{"name":"BAB","value":"43.46","change":"4.92"},{"name":"TCH","value":"51.67","change":"-3.11"},{"name":"VCS","value":"35.47","change":"0.80"},{"name":"EVF","value":"27.75","change":"3.87"},{"name":"DGW","value":"34.83","change":"-3.04"},{"name":"MML","value":"43.13","change":"10.43"},{"name":"SNZ","value":"45.24","change":"-0.00"},{"name":"VSF","value":"50.09","change":"-4.49"},{"name":"BMP","value":"62.06","change":"11.59"},{"name":"ABB","value":"57.21","change":"5.19"},{"name":"SBT","value":"54.97","change":"13.32"},{"name":"TMS","value":"64.87","change":"0.00"},{"name":"PVT","value":"32.03","change":"1.52"},{"name":"CMG","value":"68.28","change":"-3.41"},{"name":"XDC","value":"28.36","change":"-3.04"},{"name":"BHN","value":"50.72","change":"0.00"},{"name":"PC1","value":"46.37","change":"0.63"},{"name":"HDG","value":"47.10","change":"-0.48"},{"name":"PGB","value":"40.75","change":"5.04"},{"name":"HAG","value":"59.58","change":"2.05"},{"name":"BWE","value":"39.26","change":"-1.39"},{"name":"KOS","value":"23.49","change":"1.64"},{"name":"PHR","value":"45.60","change":"2.90"},{"name":"SJS","value":"36.82","change":"8.65"},{"name":"PHP","value":"41.04","change":"1.95"},{"name":"GEE","value":"51.84","change":"-0.56"},{"name":"DTK","value":"46.08","change":"0.00"},{"name":"QTP","value":"57.13","change":"5.57"},{"name":"SCS","value":"62.66","change":"0.77"},{"name":"DBC","value":"50.72","change":"-0.45"},{"name":"SZC","value":"41.57","change":"2.33"},{"name":"MPC","value":"31.16","change":"-2.14"},{"name":"HND","value":"57.42","change":"0.00"},{"name":"CTD","value":"50.07","change":"5.53"},{"name":"VGT","value":"42.29","change":"-0.00"},{"name":"NKG","value":"57.26","change":"0.41"},{"name":"NT2","value":"33.49","change":"1.50"},{"name":"SJG","value":"42.92","change":"-17.75"},{"name":"ACG","value":"49.16","change":"0.00"},{"name":"HHV","value":"43.34","change":"3.32"},{"name":"CC1","value":"36.68","change":"0.00"},{"name":"VCF","value":"68.10","change":"-0.00"},{"name":"VIF","value":"55.70","change":"9.97"},{"name":"VSC","value":"49.87","change":"-11.27"},{"name":"CII","value":"42.72","change":"2.45"},{"name":"VBB","value":"44.78","change":"0.00"},{"name":"NVB","value":"36.42","change":"-2.67"},{"name":"KSV","value":"55.44","change":"4.68"},{"name":"BVB","value":"58.22","change":"0.00"},{"name":"CTS","value":"47.10","change":"-6.55"},{"name":"IJC","value":"41.27","change":"-0.54"},{"name":"SCG","value":"49.19","change":"6.23"},{"name":"NTP","value":"41.36","change":"7.09"},{"name":"SBH","value":"67.81","change":"0.00"},{"name":"TID","value":"43.99","change":"-4.89"},{"name":"ITA","value":"31.86","change":"-1.19"},{"name":"KLB","value":"45.46","change":"-3.25"},{"name":"VTP","value":"42.97","change":"-1.24"},{"name":"TVN","value":"42.61","change":"-4.55"},{"name":"DVN","value":"66.23","change":"0.00"},{"name":"PAN","value":"50.88","change":"2.98"},{"name":"TMP","value":"24.89","change":"-8.52"},{"name":"ORS","value":"45.23","change":"0.31"},{"name":"HNG","value":"37.70","change":"-2.96"},{"name":"STG","value":"53.49","change":"4.64"},{"name":"HT1","value":"31.53","change":"-0.93"},{"name":"ANV","value":"46.76","change":"0.82"},{"name":"C4G","value":"37.08","change":"4.11"},{"name":"TDM","value":"69.31","change":"13.49"},{"name":"SGB","value":"54.64","change":"-7.86"},{"name":"IMP","value":"62.49","change":"-7.63"},{"name":"VCR","value":"52.34","change":"1.24"},{"name":"BCG","value":"33.75","change":"-14.65"},{"name":"GEG","value":"44.82","change":"-9.91"},{"name":"DSC","value":"46.07","change":"3.01"},{"name":"DXS","value":"40.88","change":"-16.67"},{"name":"AGR","value":"47.87","change":"-1.48"},{"name":"HDC","value":"35.27","change":"-11.81"},{"name":"VAB","value":"55.92","change":"-24.83"},{"name":"CAV","value":"30.30","change":"-3.01"},{"name":"ASM","value":"50.87","change":"7.43"},{"name":"HAH","value":"32.46","change":"-14.05"},{"name":"PPC","value":"79.43","change":"-2.09"},{"name":"CHP","value":"62.31","change":"-10.95"},{"name":"PTB","value":"29.33","change":"-0.15"},{"name":"PDN","value":"53.73","change":"0.00"},{"name":"MCM","value":"30.00","change":"-4.34"},{"name":"AAA","value":"48.49","change":"2.46"},{"name":"NTC","value":"39.91","change":"-3.82"},{"name":"DBD","value":"32.61","change":"-5.83"},{"name":"TCM","value":"46.12","change":"8.31"},{"name":"VNR","value":"36.09","change":"-10.13"},{"name":"CRE","value":"47.74","change":"-5.84"},{"name":"HNA","value":"45.52","change":"-5.45"},{"name":"TLG","value":"50.07","change":"0.00"},{"name":"PRT","value":"46.96","change":"-7.38"},{"name":"SGP","value":"38.76","change":"-8.98"},{"name":"PGD","value":"48.05","change":"0.00"},{"name":"VLC","value":"33.77","change":"-9.91"},{"name":"AVC","value":"49.44","change":"0.00"},{"name":"DRC","value":"50.75","change":"6.44"},{"name":"TVS","value":"46.09","change":"2.04"},{"name":"DPR","value":"38.86","change":"-4.86"},{"name":"DNW","value":"43.68","change":"0.00"},{"name":"TRA","value":"56.23","change":"-1.67"},{"name":"MSH","value":"59.28","change":"0.74"},{"name":"BIC","value":"45.89","change":"-7.32"},{"name":"IPA","value":"87.86","change":"0.00"},{"name":"SHP","value":"46.52","change":"0.00"},{"name":"VC3","value":"59.69","change":"6.95"},{"name":"SCR","value":"26.44","change":"-3.80"},{"name":"VPD","value":"53.77","change":"-3.91"},{"name":"BMI","value":"72.44","change":"0.00"},{"name":"AGG","value":"54.73","change":"8.70"},{"name":"TDP","value":"48.03","change":"3.36"},{"name":"KHG","value":"39.56","change":"-2.02"},{"name":"CSV","value":"47.57","change":"8.80"},{"name":"PTI","value":"68.23","change":"10.74"},{"name":"CDN","value":"52.81","change":"0.00"},{"name":"PGI","value":"63.20","change":"0.00"},{"name":"BVS","value":"59.49","change":"-11.73"},{"name":"PLC","value":"26.31","change":"-5.62"},{"name":"VFG","value":"58.65","change":"0.00"},{"name":"LCG","value":"74.09","change":"7.03"},{"name":"TNG","value":"62.56","change":"2.66"},{"name":"FCN","value":"61.88","change":"-2.18"},{"name":"TIG","value":"40.11","change":"0.00"},{"name":"TBC","value":"54.55","change":"4.98"},{"name":"TV2","value":"69.05","change":"-0.00"},{"name":"SAM","value":"57.79","change":"-1.81"},{"name":"SHI","value":"57.57","change":"-8.39"},{"name":"TNH","value":"24.86","change":"-10.15"},{"name":"GIL","value":"53.02","change":"0.00"},{"name":"LAS","value":"57.11","change":"1.45"},{"name":"DNP","value":"71.25","change":"-7.82"},{"name":"NCT","value":"60.64","change":"1.42"},{"name":"DMC","value":"66.63","change":"4.19"},{"name":"MVB","value":"42.68","change":"-0.00"},{"name":"DHT","value":"48.73","change":"2.02"},{"name":"APH","value":"55.72","change":"-12.01"},{"name":"SBA","value":"48.42","change":"-2.29"},{"name":"ASG","value":"48.21","change":"-4.31"},{"name":"PRE","value":"49.99","change":"0.00"},{"name":"NET","value":"51.83","change":"1.45"},{"name":"ELC","value":"39.81","change":"-3.30"},{"name":"SVC","value":"63.25","change":"2.16"}],
+      selectedTags: JSON.parse(localStorage.getItem('selectedTags')) || [],
+      lastUpdated: '',
+      myScatterChart: null
+    },
+    computed: {
+      tagOptions() {
+        return this.originalData.map(item => item.name);
+      },
+      filteredData() {
+        return this.selectedTags.length > 0
+               ? this.originalData.filter(item => this.selectedTags.includes(item.name))
+               : this.originalData;
+      }
+    },
+    methods: {
+      createScatterData(data) {
+        return {
+          datasets: [
+            {
+              label: 'Symbol',
+              data: data.map((item, index) => ({x: index + 1, y: item.value})),
+              backgroundColor: 'rgba(255, 99, 132, 1)',
+              pointRadius: 6,
+            },
+            ...data.map((item, index) => ({
+              data: [
+                {x: index + 1, y: item.value - item.change},
+                {x: index + 1, y: item.value}
+              ],
+              borderColor: item.change >= 0 ? 'green' : 'red',
+              borderWidth: 2,
+              showLine: true,
+              fill: false,
+              pointRadius: 0,
+              tension: 0,
+              borderDash: [5, 5]
+            }))
+          ]
+        };
+      },
+      updateChart() {
+        this.myScatterChart.data = this.createScatterData(this.filteredData);
+        this.myScatterChart.update();
+        this.lastUpdated = new Date().toLocaleString();
+      },
+      saveSelectedTags() {
+        localStorage.setItem('selectedTags', JSON.stringify(this.selectedTags));
+      },
+      clearSelectedTags() {
+        this.selectedTags = [];
+      }
+    },
+    watch: {
+      selectedTags: {
+        handler() {
+          this.updateChart();
+          this.saveSelectedTags();
+        },
+        deep: true
+      }
+    },
+    mounted() {
+      const ctx = document.getElementById('myScatterChart').getContext('2d');
+      const config = {
+        type: 'scatter',
+        data: this.createScatterData(this.filteredData),
+        options: {
+          layout: {
+            padding: 10
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              position: 'bottom'
+            },
+            y: {
+              type: 'linear',
+              position: 'left',
+              // min: -100,
+              // max: 100
+            },
+          },
+          plugins: {
+            title: {
+              display: true,
+              text: 'Biểu đồ RSI'
+            },
+            legend: {
+              display: false
+            },
+            datalabels: {
+              anchor: 'end',
+              align: 'top',
+              offset: 5,
+              formatter: function (value, context) {
+                const dataIndex = context.dataIndex;
+                if (context.datasetIndex === 0 && dataIndex < this.filteredData.length) {
+                  return this.filteredData[dataIndex].name;
+                } else {
+                  return null;
+                }
+              }.bind(this),
+              color: '#444',
+              font: {
+                weight: 'bold'
+              }
+            },
+            tooltip: {
+              callbacks: {
+                title: function (context) {
+                  return this.filteredData[context[0].dataIndex].name;
+                }.bind(this),
+                footer: function (context) {
+                  return 'Cập nhật lần cuối: ' + this.lastUpdated;
+                },
+                label: function(context) {
+                  return 'RSI: ' + context.parsed.y
+                }
+              }
+            }
+          }
+        },
+        plugins: [ChartDataLabels]
+      };
+      this.myScatterChart = new Chart(ctx, config);
+      this.lastUpdated = new Date().toLocaleString();
+    }
+  });
+</script>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
