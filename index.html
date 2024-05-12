@@ -3,94 +3,19 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Scatter Chart with Movement Indicators</title>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+    <title>GetRealHope</title>
+    <!-- PushAlert -->
+    <script type="text/javascript">
+            (function(d, t) {
+                    var g = d.createElement(t),
+                    s = d.getElementsByTagName(t)[0];
+                    g.src = "https://cdn.pushalert.co/integrate_b6e2671b32c9b84173f4eef4ef2a8bc0.js";
+                    s.parentNode.insertBefore(g, s);
+            }(document, "script"));
+    </script>
+    <!-- End PushAlert -->
 </head>
 <body>
-<canvas id="myScatterChart"></canvas>
-<script>
-    const data = [
-        {"name": "A", "value": 100, "change": 15},
-        {"name": "B", "value": -20, "change": -5},
-        {"name": "C", "value": -10, "change": 10},
-        {"name": "D", "value": 24, "change": -8}
-    ];
-
-    const scatterData = {
-        datasets: [
-            {
-                label: 'Symbol',
-                data: data.map((item, index) => ({ x: index + 1, y: item.value })),
-                backgroundColor: 'rgba(255, 99, 132, 1)',
-                pointRadius: 10, // Make points bigger
-            },
-            // Line datasets for each point
-            ...data.map((item, index) => ({
-                data: [
-                    { x: index + 1, y: item.value - item.change }, // Start from past value
-                    { x: index + 1, y: item.value } // Current value
-                ],
-                borderColor: item.change >= 0 ? 'green' : 'red',
-                borderWidth: 2,
-                showLine: true,
-                fill: false,
-                pointRadius: 0, // Hide points for the line dataset
-                tension: 0, // Straight line without any curve
-                borderDash: [5, 5] // Dashed line style
-            }))
-        ]
-    };
-
-    const config = {
-        type: 'scatter',
-        data: scatterData,
-        options: {
-            layout: {
-                padding: 20
-            },
-            scales: {
-                x: {
-                    type: 'linear',
-                    position: 'bottom'
-                },
-                y: {
-                    type: 'linear',
-                    position: 'left'
-                }
-            },
-            plugins: {
-                title: {
-                    display: true,
-                    text: 'Custom Chart Title'
-                },
-                legend: {
-                    display: false
-                },
-                datalabels: {
-                    anchor: 'end',
-                    align: 'right',
-                    offset: 8, // Offset to move the label to the right of the point
-                    formatter: function(value, context) {
-                        // Return the name for the point labels, and nothing for the lines
-                        if (context.datasetIndex === 0) {
-                            return data[context.dataIndex].name + "(" + data[context.dataIndex].value + ")";
-                        } else {
-                            return null;
-                        }
-                    },
-                    color: '#444',
-                    font: {
-                        weight: 'bold'
-                    }
-                }
-            }
-        },
-        plugins: [ChartDataLabels]
-    };
-
-    const ctx = document.getElementById('myScatterChart').getContext('2d');
-    new Chart(ctx, config);
-</script>
+    <p>Alert</p>
 </body>
 </html>
