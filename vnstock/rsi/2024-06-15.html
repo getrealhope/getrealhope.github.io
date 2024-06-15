@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Scatter Chart with Movement Indicators</title>
+  <link rel="stylesheet" href="https://unpkg.com/vue-select@3.11.2/dist/vue-select.css">
+  <link rel="stylesheet" href="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/css/bootstrap.min.css">
+  <style>
+    body {
+      font-family: Arial, sans-serif;
+      background-color: #f4f4f4;
+    }
+
+    #app {
+      background-color: white;
+      border-radius: 8px;
+      padding: 20px;
+      box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+      max-width: 1300px;
+      margin: 20px auto;
+    }
+
+    canvas {
+      margin-top: 20px;
+    }
+
+    button {
+      background-color: #007bff;
+      color: white;
+      border: none;
+      padding: 10px 20px;
+      border-radius: 5px;
+      cursor: pointer;
+      font-size: 16px;
+    }
+
+    button:hover {
+      background-color: #0056b3;
+    }
+
+    p {
+      color: #666;
+      font-size: 14px;
+    }
+  </style>
+  <script src="https://cdn.jsdelivr.net/npm/vue@2.6.14/dist/vue.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/vue-select@3.11.2"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-datalabels"></script>
+</head>
+<body>
+
+<div id="app">
+  <nav class="navbar navbar-expand-lg">
+    <a class="navbar-brand" href="#">Chứng khoán Việt Nam</a>
+    <button class="navbar-toggler" type="button" data-toggle="collapse" data-target="#navbarNavDropdown"
+            aria-controls="navbarNavDropdown" aria-expanded="false" aria-label="Toggle navigation">
+      <span class="navbar-toggler-icon"></span>
+    </button>
+    <div class="collapse navbar-collapse" id="navbarNavDropdown">
+      <ul class="navbar-nav">
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink1" role="button"
+             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Momentum Indicators
+          </a>
+          <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+            <a class="dropdown-item" href="#">Relative Strength Index (RSI)</a>
+            <a class="dropdown-item" href="#">Moving Average Convergence Divergence (MACD)</a>
+            <a class="dropdown-item" href="#">Stochastic Oscillator</a>
+            <a class="dropdown-item" href="#">Commodity Channel Index (CCI)</a>
+            <a class="dropdown-item" href="#">Rate of Change (ROC)</a>
+          </div>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink2" role="button"
+             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Volume Indicators
+          </a>
+          <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+            <a class="dropdown-item" href="#">On-Balance Volume (OBV)</a>
+            <a class="dropdown-item" href="#">Accumulation/Distribution Line</a>
+            <a class="dropdown-item" href="#">Volume Oscillator</a>
+            <a class="dropdown-item" href="#">Chaikin Money Flow (CMF)</a>
+            <a class="dropdown-item" href="#">Volume Rate of Change</a>
+          </div>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink3" role="button"
+             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Volatility Indicators
+          </a>
+          <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+            <a class="dropdown-item" href="#">Average True Range (ATR)</a>
+            <a class="dropdown-item" href="#">Bollinger Bands</a>
+            <a class="dropdown-item" href="#">Keltner Channels</a>
+            <a class="dropdown-item" href="#">Donchian Channels</a>
+            <a class="dropdown-item" href="#">Volatility Chaikin</a>
+          </div>
+        </li>
+        <li class="nav-item dropdown">
+          <a class="nav-link dropdown-toggle" href="#" id="navbarDropdownMenuLink4" role="button"
+             data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+            Cycle Indicators
+          </a>
+          <div class="dropdown-menu" aria-labelledby="navbarDropdownMenuLink">
+            <a class="dropdown-item" href="#">Detrended Price Oscillator (DPO)</a>
+            <a class="dropdown-item" href="#">Schaff Trend Cycle</a>
+            <a class="dropdown-item" href="#">Elliott Wave Theory</a>
+            <a class="dropdown-item" href="#">Fibonacci Time Zones</a>
+            <a class="dropdown-item" href="#">Gann Fan</a>
+          </div>
+        </li>
+      </ul>
+    </div>
+  </nav>
+  <v-select multiple :options="tagOptions" v-model="selectedTags" placeholder="Chọn mã CP"></v-select>
+  <div>
+    <button class="btn-sm m-1" @click="vn30">VN30</button>
+    <button class="btn-sm m-1" @click="vn100">VN100</button>
+    <button class="btn-sm m-1" @click="vnDiamond">VNDIAMOND</button>
+    <button class="btn-sm m-1" @click="hnx30">HNX30</button>
+    <button class="btn-sm m-1" @click="clearSelectedTags">Toàn thị trường</button>
+  </div>
+  <p>Cập nhật lần cuối: 2024-06-15T10:08:12.624Z</p>
+
+  <canvas id="myScatterChart"></canvas>
+  <ul>
+    <li>
+      Đường kẻ đứt màu đỏ thể hiện giá trị của mã cổ phiếu giảm so với ngày trước đó, đường kẻ đứt màu xanh thể
+      hiện giá trị tăng so với ngày trước đó.
+    </li>
+    <li>
+      Chấm màu đỏ thể hiện giá trị phân tích kỹ thuật của mã cổ phiếu hiện tại
+    </li>
+  </ul>
+</div>
+
+<script>
+  const footer = (context) => {
+    let sum = 0;
+
+    context.forEach(function (tooltipItem) {
+      sum += tooltipItem.parsed.y;
+    });
+    return 'Sum: ' + sum;
+  };
+  Vue.component('v-select', VueSelect.VueSelect);
+
+  new Vue({
+    el: '#app',
+    data: {
+      originalData: [{"name":"VCB","value":"42.12","change":"-1.44","open":88.9,"high":89.1,"low":88.4,"close":88.4,"timestamp":1718236800},{"name":"BID","value":"48.12","change":"4.59","open":48.35,"high":48.35,"low":47.9,"close":48.35,"timestamp":1718236800},{"name":"GAS","value":"57.46","change":"-1.68","open":81,"high":81,"low":80.2,"close":80.2,"timestamp":1718236800},{"name":"VHM","value":"31.18","change":"-2.07","open":38.55,"high":38.7,"low":38.1,"close":38.25,"timestamp":1718236800},{"name":"CTG","value":"60.19","change":"3.35","open":34,"high":34.15,"low":33.5,"close":33.9,"timestamp":1718236800},{"name":"VIC","value":"36.76","change":"-0.79","open":43.3,"high":43.5,"low":42.9,"close":43.2,"timestamp":1718236800},{"name":"ACV","value":"84.54","change":"6.07","open":122.2,"high":135.8,"low":122.2,"close":135.6,"timestamp":1718236800},{"name":"HPG","value":"52.12","change":"-1.19","open":29.65,"high":29.7,"low":29.3,"close":29.5,"timestamp":1718236800},{"name":"TCB","value":"65.40","change":"0.00","open":49.5,"high":49.6,"low":49.3,"close":49.4,"timestamp":1718236800},{"name":"VPB","value":"66.53","change":"0.56","open":19.5,"high":19.8,"low":19.25,"close":19.45,"timestamp":1718236800},{"name":"FPT","value":"46.25","change":"-2.33","open":133.7,"high":133.8,"low":130,"close":130,"timestamp":1718236800},{"name":"VNM","value":"51.50","change":"-0.58","open":67,"high":67.4,"low":66.8,"close":66.9,"timestamp":1718236800},{"name":"GVR","value":"58.78","change":"-3.49","open":35.95,"high":35.95,"low":35.3,"close":35.35,"timestamp":1718236800},{"name":"MBB","value":"61.62","change":"5.10","open":23.2,"high":23.7,"low":23.15,"close":23.55,"timestamp":1718236800},{"name":"ACB","value":"36.34","change":"3.21","open":24.55,"high":24.9,"low":24.4,"close":24.8,"timestamp":1718236800},{"name":"MSN","value":"62.32","change":"2.27","open":78.5,"high":78.8,"low":78,"close":78.6,"timestamp":1718236800},{"name":"VGI","value":"65.94","change":"1.87","open":88.1,"high":92.3,"low":88.1,"close":91,"timestamp":1718236800},{"name":"BCM","value":"60.00","change":"0.58","open":64.4,"high":64.6,"low":63.6,"close":64.4,"timestamp":1718236800},{"name":"MWG","value":"65.37","change":"1.89","open":63.7,"high":64.4,"low":63.1,"close":64,"timestamp":1718236800},{"name":"SAB","value":"64.79","change":"-6.94","open":67.3,"high":67.3,"low":65.5,"close":65.6,"timestamp":1718236800},{"name":"HDB","value":"54.21","change":"1.19","open":24.2,"high":24.25,"low":23.9,"close":24.1,"timestamp":1718236800},{"name":"BSR","value":"69.88","change":"0.00","open":23.4,"high":23.9,"low":23,"close":23.2,"timestamp":1718236800},{"name":"VIB","value":"62.78","change":"-1.30","open":23,"high":23.1,"low":22.8,"close":22.9,"timestamp":1718236800},{"name":"MCH","value":"79.13","change":"-3.95","open":221.5,"high":221.5,"low":217.1,"close":218.5,"timestamp":1718236800},{"name":"SSI","value":"58.64","change":"-1.27","open":36.8,"high":36.9,"low":36.35,"close":36.5,"timestamp":1718236800},{"name":"VJC","value":"40.68","change":"-0.78","open":106.6,"high":106.6,"low":105.3,"close":106,"timestamp":1718236800},{"name":"VRE","value":"39.79","change":"-1.66","open":21.9,"high":22.05,"low":21.6,"close":21.7,"timestamp":1718236800},{"name":"STB","value":"72.21","change":"1.73","open":31.5,"high":31.9,"low":31.25,"close":31.65,"timestamp":1718236800},{"name":"SSB","value":"46.99","change":"6.18","open":21.6,"high":21.7,"low":21.55,"close":21.7,"timestamp":1718236800},{"name":"PLX","value":"62.98","change":"-9.46","open":43.3,"high":43.3,"low":42.15,"close":42.2,"timestamp":1718236800},{"name":"VEA","value":"62.84","change":"-0.52","open":46,"high":46.5,"low":44.8,"close":46.1,"timestamp":1718236800},{"name":"LPB","value":"77.92","change":"2.61","open":26.2,"high":26.6,"low":26.1,"close":26.6,"timestamp":1718236800},{"name":"DGC","value":"50.71","change":"0.34","open":123.4,"high":123.7,"low":122.1,"close":123.3,"timestamp":1718236800},{"name":"SHB","value":"60.30","change":"5.05","open":11.9,"high":12.1,"low":11.75,"close":12,"timestamp":1718236800},{"name":"TPB","value":"66.08","change":"8.06","open":18.5,"high":19.1,"low":18.45,"close":19,"timestamp":1718236800},{"name":"NVL","value":"43.78","change":"0.00","open":14.45,"high":14.55,"low":14.35,"close":14.35,"timestamp":1718236800},{"name":"HVN","value":"72.47","change":"1.38","open":28.5,"high":29.1,"low":28.5,"close":28.9,"timestamp":1718236800},{"name":"BVH","value":"58.76","change":"-3.41","open":46.25,"high":46.4,"low":45.45,"close":45.75,"timestamp":1718236800},{"name":"PNJ","value":"57.55","change":"1.41","open":97.4,"high":97.4,"low":96.3,"close":97.3,"timestamp":1718236800},{"name":"EIB","value":"53.27","change":"-1.50","open":19.25,"high":19.35,"low":19.05,"close":19.1,"timestamp":1718236800},{"name":"OCB","value":"67.71","change":"3.07","open":15.4,"high":15.65,"low":15.4,"close":15.6,"timestamp":1718236800},{"name":"MSB","value":"74.05","change":"5.17","open":15,"high":15.3,"low":14.9,"close":15.2,"timestamp":1718236800},{"name":"VND","value":"36.80","change":"1.59","open":18.15,"high":18.25,"low":18,"close":18.15,"timestamp":1718236800},{"name":"POW","value":"71.65","change":"1.23","open":14.1,"high":14.45,"low":13.95,"close":14.15,"timestamp":1718236800},{"name":"KDH","value":"64.78","change":"3.77","open":38.1,"high":39.35,"low":38,"close":38.6,"timestamp":1718236800},{"name":"REE","value":"55.81","change":"2.01","open":64.9,"high":64.9,"low":63.7,"close":64,"timestamp":1718236800},{"name":"VGC","value":"54.29","change":"-4.93","open":56.6,"high":56.8,"low":55.8,"close":55.8,"timestamp":1718236800},{"name":"KBC","value":"49.94","change":"-2.90","open":31.75,"high":31.75,"low":31.25,"close":31.35,"timestamp":1718236800},{"name":"SSH","value":"59.15","change":"-5.42","open":69.2,"high":69.2,"low":68.3,"close":68.7,"timestamp":1718236800},{"name":"GMD","value":"54.72","change":"-3.17","open":85.8,"high":85.8,"low":84.7,"close":85,"timestamp":1718236800},{"name":"PGV","value":"63.67","change":"1.06","open":22.8,"high":23.1,"low":22.75,"close":22.9,"timestamp":1718236800},{"name":"VEF","value":"50.52","change":"-0.36","open":221,"high":222,"low":218,"close":220.6,"timestamp":1718236800},{"name":"HCM","value":"54.98","change":"-3.79","open":30.2,"high":30.2,"low":29.55,"close":29.55,"timestamp":1718236800},{"name":"VNZ","value":"60.86","change":"-3.57","open":570.7,"high":570.7,"low":570.7,"close":570.7,"timestamp":1718236800},{"name":"FOX","value":"76.87","change":"-0.94","open":105.5,"high":107.4,"low":104.6,"close":105,"timestamp":1718236800},{"name":"MVN","value":"90.37","change":"3.02","open":31.7,"high":34.2,"low":31.6,"close":34.2,"timestamp":1718236800},{"name":"PVS","value":"60.44","change":"-0.78","open":40.9,"high":45.9,"low":40.9,"close":45.3,"timestamp":1718236800},{"name":"GEX","value":"55.92","change":"1.55","open":23.7,"high":24,"low":23.55,"close":23.7,"timestamp":1718236800},{"name":"DIG","value":"49.49","change":"4.74","open":28,"high":28.7,"low":27.95,"close":28.2,"timestamp":1718236800},{"name":"VCI","value":"59.51","change":"-3.40","open":51.5,"high":51.5,"low":50.7,"close":50.7,"timestamp":1718236800},{"name":"IDC","value":"60.49","change":"4.97","open":63,"high":64,"low":62.4,"close":63.8,"timestamp":1718236800},{"name":"FRT","value":"74.84","change":"1.13","open":177.7,"high":177.7,"low":174.5,"close":177,"timestamp":1718236800},{"name":"PVD","value":"53.33","change":"-2.96","open":32.8,"high":32.8,"low":32.2,"close":32.2,"timestamp":1718236800},{"name":"MSR","value":"47.88","change":"1.08","open":16.4,"high":16.9,"low":16.4,"close":16.5,"timestamp":1718236800},{"name":"QNS","value":"53.06","change":"-0.80","open":50,"high":50.2,"low":49.8,"close":49.9,"timestamp":1718236800},{"name":"DCM","value":"61.41","change":"-4.02","open":39.55,"high":39.85,"low":38.95,"close":39,"timestamp":1718236800},{"name":"DNH","value":"49.92","change":"0.00","open":54.5,"high":54.5,"low":54.5,"close":54.5,"timestamp":1718236800},{"name":"KDC","value":"29.13","change":"-29.53","open":64.3,"high":64.3,"low":61.8,"close":62.2,"timestamp":1718236800},{"name":"HUT","value":"51.43","change":"-2.89","open":18.6,"high":18.8,"low":18.4,"close":18.4,"timestamp":1718236800},{"name":"VHC","value":"60.23","change":"4.80","open":76.2,"high":77.5,"low":75.7,"close":77.5,"timestamp":1718236800},{"name":"NLG","value":"56.06","change":"3.37","open":43.5,"high":44.35,"low":43.5,"close":44.1,"timestamp":1718236800},{"name":"SHS","value":"58.17","change":"-1.90","open":19.5,"high":19.8,"low":19.4,"close":19.4,"timestamp":1718236800},{"name":"PDR","value":"51.90","change":"5.29","open":25.9,"high":26.75,"low":25.85,"close":26.3,"timestamp":1718236800},{"name":"DHG","value":"41.35","change":"-3.35","open":116.1,"high":116.8,"low":115.3,"close":115.5,"timestamp":1718236800},{"name":"IDP","value":"6.05","change":"0.00","open":220,"high":220,"low":220,"close":220,"timestamp":1718236800},{"name":"DXG","value":"48.50","change":"2.99","open":16.9,"high":17.1,"low":16.8,"close":16.9,"timestamp":1718236800},{"name":"CTR","value":"67.57","change":"12.35","open":134,"high":142.5,"low":133.8,"close":142.5,"timestamp":1718236800},{"name":"NAB","value":"58.10","change":"1.39","open":16.45,"high":16.55,"low":16.3,"close":16.55,"timestamp":1718236800},{"name":"HSG","value":"72.19","change":"-2.59","open":24.7,"high":24.7,"low":24.25,"close":24.4,"timestamp":1718236800},{"name":"VPI","value":"48.83","change":"5.55","open":57.9,"high":58.5,"low":57.8,"close":58.5,"timestamp":1718236800},{"name":"DPM","value":"68.02","change":"-0.58","open":39.05,"high":39.4,"low":38.7,"close":38.8,"timestamp":1718236800},{"name":"THD","value":"32.87","change":"0.00","open":34.9,"high":34.9,"low":34.8,"close":34.8,"timestamp":1718236800},{"name":"VCG","value":"28.16","change":"-21.71","open":20.715,"high":20.805,"low":20.537,"close":20.581,"timestamp":1718236800},{"name":"VIX","value":"61.73","change":"-3.07","open":19.2,"high":19.25,"low":18.9,"close":18.9,"timestamp":1718236800},{"name":"MBS","value":"70.13","change":"0.86","open":34.9,"high":35.3,"low":34.7,"close":35.1,"timestamp":1718236800},{"name":"FTS","value":"43.41","change":"-2.50","open":48.75,"high":48.75,"low":47.5,"close":47.5,"timestamp":1718236800},{"name":"BSI","value":"59.34","change":"-3.51","open":61.3,"high":61.3,"low":60,"close":60.2,"timestamp":1718236800},{"name":"SIP","value":"58.98","change":"-2.28","open":95.5,"high":95.5,"low":93.5,"close":94.4,"timestamp":1718236800},{"name":"KSF","value":"50.68","change":"3.95","open":40.3,"high":40.4,"low":40.3,"close":40.4,"timestamp":1718236800},{"name":"CEO","value":"45.98","change":"0.00","open":18.6,"high":19.1,"low":18.6,"close":18.7,"timestamp":1718236800},{"name":"PVI","value":"61.69","change":"-6.90","open":59.4,"high":59.4,"low":58.2,"close":58.2,"timestamp":1718236800},{"name":"OIL","value":"73.48","change":"-0.00","open":11.5,"high":11.7,"low":11.3,"close":11.5,"timestamp":1718236800},{"name":"VSH","value":"61.29","change":"0.00","open":49.45,"high":50,"low":49.45,"close":49.5,"timestamp":1718236800},{"name":"LGC","value":"50.95","change":"0.00","open":58,"high":58,"low":58,"close":58,"timestamp":1718236800},{"name":"BAB","value":"47.41","change":"-3.70","open":12.5,"high":12.5,"low":12.2,"close":12.3,"timestamp":1718236800},{"name":"TCH","value":"57.80","change":"0.00","open":19.8,"high":20.3,"low":19.65,"close":19.65,"timestamp":1718236800},{"name":"VCS","value":"67.68","change":"-5.71","open":80.8,"high":81,"low":79.2,"close":79.3,"timestamp":1718236800},{"name":"EVF","value":"50.57","change":"3.50","open":15.4,"high":15.65,"low":15.25,"close":15.45,"timestamp":1718236800},{"name":"DGW","value":"60.29","change":"-3.09","open":66.6,"high":66.6,"low":65.3,"close":65.5,"timestamp":1718236800},{"name":"MML","value":"60.48","change":"2.64","open":34.3,"high":35.9,"low":33.8,"close":35.7,"timestamp":1718236800},{"name":"SNZ","value":"63.67","change":"0.00","open":36.5,"high":37,"low":36.1,"close":37,"timestamp":1718236800},{"name":"VSF","value":"44.84","change":"-8.35","open":33.1,"high":34,"low":33.1,"close":33.1,"timestamp":1718236800},{"name":"BMP","value":"39.43","change":"-0.92","open":108,"high":108.5,"low":107,"close":107,"timestamp":1718236800},{"name":"ABB","value":"58.18","change":"0.00","open":8.7,"high":8.8,"low":8.5,"close":8.7,"timestamp":1718236800},{"name":"SBT","value":"50.58","change":"-2.28","open":12.1,"high":12.15,"low":11.95,"close":11.95,"timestamp":1718236800},{"name":"TMS","value":"43.36","change":"3.82","open":50,"high":50.8,"low":50,"close":50.3,"timestamp":1718236800},{"name":"PVT","value":"61.90","change":"0.57","open":31.45,"high":31.7,"low":31.1,"close":31.4,"timestamp":1718236800},{"name":"CMG","value":"69.35","change":"0.57","open":71,"high":72.1,"low":70,"close":70,"timestamp":1718236800},{"name":"XDC","value":"28.36","change":"-3.04","open":76.4,"high":76.4,"low":65,"close":65,"timestamp":1703721600},{"name":"BHN","value":"57.69","change":"0.00","open":39.8,"high":39.9,"low":39.8,"close":39.8,"timestamp":1718236800},{"name":"PC1","value":"58.60","change":"1.78","open":29.3,"high":29.85,"low":29.1,"close":29.2,"timestamp":1718236800},{"name":"HDG","value":"69.51","change":"-0.56","open":35,"high":35.85,"low":34.55,"close":34.7,"timestamp":1718236800},{"name":"PGB","value":"49.93","change":"2.70","open":17.9,"high":18.3,"low":17.8,"close":18,"timestamp":1718236800},{"name":"HAG","value":"48.09","change":"-3.74","open":14.2,"high":14.25,"low":13.85,"close":13.95,"timestamp":1718236800},{"name":"BWE","value":"65.70","change":"1.56","open":46.2,"high":46.5,"low":45.8,"close":46.4,"timestamp":1718236800},{"name":"KOS","value":"50.83","change":"0.00","open":38.8,"high":38.8,"low":36.3,"close":38.8,"timestamp":1718236800},{"name":"PHR","value":"55.57","change":"0.00","open":63,"high":63,"low":62,"close":62.4,"timestamp":1718236800},{"name":"SJS","value":"33.03","change":"-0.73","open":61.9,"high":61.9,"low":61.1,"close":61.7,"timestamp":1718236800},{"name":"PHP","value":"72.00","change":"0.78","open":26.4,"high":27.4,"low":26,"close":26.6,"timestamp":1718236800},{"name":"GEE","value":"62.34","change":"3.23","open":32.7,"high":33,"low":32.6,"close":33,"timestamp":1718236800},{"name":"DTK","value":"62.64","change":"0.00","open":13.9,"high":14.4,"low":13.8,"close":13.9,"timestamp":1718236800},{"name":"QTP","value":"53.08","change":"2.24","open":16.8,"high":16.9,"low":16.6,"close":16.9,"timestamp":1718236800},{"name":"SCS","value":"48.56","change":"3.41","open":86.3,"high":88,"low":86.3,"close":87.4,"timestamp":1718236800},{"name":"DBC","value":"65.71","change":"2.75","open":36,"high":36.45,"low":35.75,"close":36.3,"timestamp":1718236800},{"name":"SZC","value":"54.19","change":"1.04","open":43.3,"high":43.3,"low":43,"close":43.15,"timestamp":1718236800},{"name":"MPC","value":"65.19","change":"0.00","open":18.8,"high":19,"low":18,"close":18.4,"timestamp":1718236800},{"name":"HND","value":"38.73","change":"-4.70","open":14.9,"high":15.2,"low":14.7,"close":14.7,"timestamp":1718236800},{"name":"CTD","value":"57.11","change":"-3.03","open":74.3,"high":75.1,"low":73.3,"close":73.4,"timestamp":1718236800},{"name":"VGT","value":"56.62","change":"-1.44","open":16.2,"high":16.3,"low":15.7,"close":16,"timestamp":1718236800},{"name":"NKG","value":"69.19","change":"0.40","open":26.6,"high":26.8,"low":26.4,"close":26.6,"timestamp":1718236800},{"name":"NT2","value":"50.71","change":"-0.67","open":23,"high":23.2,"low":22.85,"close":22.9,"timestamp":1718236800},{"name":"SJG","value":"56.54","change":"1.19","open":13.6,"high":13.6,"low":13.6,"close":13.6,"timestamp":1718236800},{"name":"ACG","value":"87.24","change":"3.64","open":49.9,"high":49.9,"low":48,"close":49.5,"timestamp":1718236800},{"name":"HHV","value":"48.32","change":"-1.26","open":13.4,"high":13.4,"low":13.25,"close":13.25,"timestamp":1718236800},{"name":"CC1","value":"56.91","change":"1.05","open":15.3,"high":15.5,"low":15.3,"close":15.4,"timestamp":1718236800},{"name":"VCF","value":"50.28","change":"0.00","open":220,"high":220,"low":220,"close":220,"timestamp":1718236800},{"name":"VIF","value":"48.32","change":"0.00","open":15.5,"high":16,"low":15.5,"close":16,"timestamp":1718236800},{"name":"VSC","value":"62.31","change":"-0.64","open":23.3,"high":23.65,"low":23.05,"close":23.15,"timestamp":1718236800},{"name":"CII","value":"54.22","change":"0.85","open":17.6,"high":17.8,"low":17.55,"close":17.6,"timestamp":1718236800},{"name":"VBB","value":"45.63","change":"-2.68","open":11.3,"high":11.4,"low":11,"close":11.1,"timestamp":1718236800},{"name":"NVB","value":"56.61","change":"4.26","open":10,"high":10.1,"low":9.8,"close":10.1,"timestamp":1718236800},{"name":"KSV","value":"61.67","change":"-1.62","open":35.1,"high":35.8,"low":35,"close":35.3,"timestamp":1718236800},{"name":"BVB","value":"64.15","change":"7.63","open":12.5,"high":12.9,"low":12.4,"close":12.9,"timestamp":1718236800},{"name":"CTS","value":"62.77","change":"-3.50","open":46.4,"high":46.4,"low":45.2,"close":45.2,"timestamp":1718236800},{"name":"IJC","value":"58.50","change":"-2.45","open":15.9,"high":16.05,"low":15.7,"close":15.8,"timestamp":1718236800},{"name":"SCG","value":"58.03","change":"3.90","open":66,"high":66.2,"low":66,"close":66.1,"timestamp":1718236800},{"name":"NTP","value":"68.84","change":"4.90","open":59.2,"high":63,"low":58,"close":62.5,"timestamp":1718236800},{"name":"SBH","value":"34.78","change":"0.00","open":56.7,"high":56.7,"low":56.7,"close":56.7,"timestamp":1718236800},{"name":"TID","value":"82.78","change":"0.00","open":28,"high":28,"low":27.2,"close":27.4,"timestamp":1718236800},{"name":"ITA","value":"49.56","change":"0.58","open":5.54,"high":5.55,"low":5.47,"close":5.48,"timestamp":1718236800},{"name":"KLB","value":"38.31","change":"-4.61","open":10.9,"high":10.9,"low":10.9,"close":10.9,"timestamp":1714608000},{"name":"VTP","value":"50.54","change":"0.65","open":77,"high":77.1,"low":74.8,"close":77,"timestamp":1714608000},{"name":"TVN","value":"32.80","change":"0.00","open":5.6,"high":5.7,"low":5.5,"close":5.6,"timestamp":1714608000},{"name":"DVN","value":"44.31","change":"2.66","open":18.2,"high":18.3,"low":18,"close":18.2,"timestamp":1714608000},{"name":"PAN","value":"43.37","change":"5.13","open":21.4,"high":21.8,"low":21.4,"close":21.8,"timestamp":1714608000},{"name":"TMP","value":"51.44","change":"1.60","open":69.6,"high":70,"low":69.6,"close":70,"timestamp":1714608000},{"name":"ORS","value":"35.55","change":"-0.72","open":14.4,"high":14.4,"low":14,"close":14.2,"timestamp":1714608000},{"name":"HNG","value":"44.90","change":"-1.65","open":4,"high":4.03,"low":3.99,"close":4.01,"timestamp":1714608000},{"name":"STG","value":"48.26","change":"0.00","open":47,"high":47,"low":47,"close":47,"timestamp":1714608000},{"name":"HT1","value":"24.60","change":"-2.24","open":11.25,"high":11.25,"low":10.8,"close":11.05,"timestamp":1714608000},{"name":"ANV","value":"35.54","change":"4.57","open":28.75,"high":29.2,"low":28.6,"close":29.2,"timestamp":1714608000},{"name":"C4G","value":"33.47","change":"6.19","open":9.6,"high":9.8,"low":9.6,"close":9.8,"timestamp":1714608000},{"name":"TDM","value":"63.26","change":"-5.40","open":50,"high":50,"low":47.85,"close":50,"timestamp":1714608000},{"name":"SGB","value":"42.39","change":"-4.54","open":14,"high":14,"low":13.1,"close":13.6,"timestamp":1714608000},{"name":"IMP","value":"41.31","change":"3.29","open":64.5,"high":65.1,"low":64.5,"close":65.1,"timestamp":1714608000},{"name":"VCR","value":"52.26","change":"0.00","open":24,"high":24,"low":24,"close":24,"timestamp":1714608000},{"name":"BCG","value":"48.27","change":"8.44","open":8.16,"high":8.36,"low":8.07,"close":8.33,"timestamp":1714608000},{"name":"GEG","value":"46.18","change":"9.81","open":12.4,"high":12.8,"low":12.4,"close":12.75,"timestamp":1714608000},{"name":"DSC","value":"43.72","change":"2.27","open":23,"high":23,"low":22,"close":22.8,"timestamp":1714608000},{"name":"DXS","value":"47.43","change":"3.11","open":7.1,"high":7.22,"low":7.06,"close":7.15,"timestamp":1714608000},{"name":"AGR","value":"36.78","change":"-2.11","open":18.05,"high":18.1,"low":17.25,"close":17.55,"timestamp":1714608000},{"name":"HDC","value":"34.14","change":"-0.99","open":28.5,"high":28.8,"low":27.7,"close":28.2,"timestamp":1714608000},{"name":"VAB","value":"60.55","change":"1.85","open":9.1,"high":9.2,"low":9,"close":9.1,"timestamp":1714608000},{"name":"CAV","value":"48.15","change":"1.70","open":71.6,"high":72,"low":71,"close":72,"timestamp":1714608000},{"name":"ASM","value":"41.45","change":"0.00","open":11,"high":11.15,"low":10.95,"close":11.05,"timestamp":1714608000},{"name":"HAH","value":"47.73","change":"-3.95","open":41.2,"high":41.2,"low":40,"close":40.55,"timestamp":1714608000},{"name":"PPC","value":"69.13","change":"22.46","open":13.6,"high":14.35,"low":13.55,"close":14.35,"timestamp":1714608000},{"name":"CHP","value":"56.32","change":"3.18","open":29.8,"high":29.95,"low":29.65,"close":29.7,"timestamp":1714608000},{"name":"PTB","value":"54.31","change":"0.91","open":64.3,"high":65,"low":63.3,"close":64.6,"timestamp":1714608000},{"name":"PDN","value":"59.44","change":"2.64","open":118,"high":119,"low":118,"close":119,"timestamp":1714608000},{"name":"MCM","value":"31.25","change":"5.36","open":38,"high":38.5,"low":38,"close":38.3,"timestamp":1714608000},{"name":"AAA","value":"44.97","change":"7.98","open":10.25,"high":10.25,"low":9.98,"close":10.1,"timestamp":1714608000},{"name":"NTC","value":"48.32","change":"4.69","open":201,"high":203,"low":198.2,"close":203,"timestamp":1714608000},{"name":"DBD","value":"34.57","change":"-0.88","open":53.2,"high":53.2,"low":53,"close":53.1,"timestamp":1714608000},{"name":"TCM","value":"43.63","change":"-0.37","open":43.05,"high":43.1,"low":42.1,"close":43,"timestamp":1714608000},{"name":"VNR","value":"43.61","change":"3.54","open":23.1,"high":23.3,"low":23,"close":23.3,"timestamp":1714608000},{"name":"CRE","value":"39.63","change":"0.00","open":8,"high":8.09,"low":7.98,"close":8.09,"timestamp":1714608000},{"name":"HNA","value":"52.17","change":"4.15","open":22.5,"high":22.5,"low":22.5,"close":22.5,"timestamp":1714608000},{"name":"TLG","value":"52.96","change":"-3.91","open":49.35,"high":49.5,"low":49.05,"close":49.3,"timestamp":1714608000},{"name":"PRT","value":"38.54","change":"-4.21","open":10.8,"high":10.8,"low":10.5,"close":10.5,"timestamp":1714608000},{"name":"SGP","value":"35.52","change":"-1.25","open":18.6,"high":18.6,"low":18,"close":18.3,"timestamp":1714608000},{"name":"PGD","value":"46.58","change":"9.67","open":35.7,"high":35.95,"low":35,"close":35.95,"timestamp":1714608000},{"name":"VLC","value":"35.06","change":"0.00","open":15.6,"high":15.7,"low":15.5,"close":15.6,"timestamp":1714608000},{"name":"AVC","value":"36.85","change":"-8.54","open":57.3,"high":57.4,"low":55,"close":55.5,"timestamp":1714608000},{"name":"DRC","value":"45.74","change":"3.83","open":30,"high":30.3,"low":29.5,"close":30.05,"timestamp":1714608000},{"name":"TVS","value":"55.34","change":"4.90","open":24,"high":24.2,"low":23.5,"close":24,"timestamp":1714608000},{"name":"DPR","value":"49.66","change":"4.60","open":37.7,"high":38.55,"low":37.6,"close":38.25,"timestamp":1714608000},{"name":"DNW","value":"63.84","change":"-1.41","open":33.9,"high":33.9,"low":33.9,"close":33.9,"timestamp":1714608000},{"name":"TRA","value":"48.34","change":"0.00","open":81.6,"high":81.6,"low":81.6,"close":81.6,"timestamp":1714608000},{"name":"MSH","value":"57.59","change":"7.12","open":43.2,"high":44.75,"low":42.5,"close":44.6,"timestamp":1714608000},{"name":"BIC","value":"62.65","change":"10.47","open":29.2,"high":30.4,"low":29,"close":30,"timestamp":1714608000},{"name":"DHC","value":"30.82","change":"0.00","open":38,"high":38.4,"low":37.9,"close":38,"timestamp":1714608000},{"name":"IPA","value":"40.74","change":"0.00","open":14,"high":14.3,"low":13.8,"close":14,"timestamp":1714608000},{"name":"SHP","value":"57.28","change":"-1.23","open":33.6,"high":33.6,"low":33,"close":33.6,"timestamp":1714608000},{"name":"VC3","value":"59.49","change":"-2.65","open":30.5,"high":30.8,"low":30.1,"close":30.3,"timestamp":1714608000},{"name":"SAS","value":"47.62","change":"-4.92","open":26,"high":26.1,"low":25.9,"close":26,"timestamp":1714608000},{"name":"BAF","value":"60.68","change":"0.00","open":28.3,"high":28.5,"low":27.95,"close":28.3,"timestamp":1714608000},{"name":"FMC","value":"49.22","change":"1.01","open":48.55,"high":49.2,"low":48.4,"close":48.7,"timestamp":1714608000},{"name":"HHS","value":"54.92","change":"6.24","open":9,"high":9.27,"low":9,"close":9.19,"timestamp":1714608000},{"name":"VDS","value":"36.95","change":"-0.95","open":18.35,"high":18.45,"low":17.6,"close":18.15,"timestamp":1714608000},{"name":"DPG","value":"44.46","change":"2.94","open":42.95,"high":43.95,"low":42.6,"close":43.75,"timestamp":1714608000},{"name":"TBD","value":"65.49","change":"0.00","open":94.7,"high":94.7,"low":94.7,"close":94.7,"timestamp":1714608000},{"name":"LTG","value":"35.48","change":"-9.23","open":22.9,"high":23.5,"low":22,"close":22.5,"timestamp":1714608000},{"name":"RAL","value":"58.60","change":"1.35","open":131.3,"high":132,"low":131.2,"close":131.9,"timestamp":1714608000},{"name":"MIG","value":"39.51","change":"-14.82","open":16.8,"high":16.988,"low":16.705,"close":16.8,"timestamp":1714608000},{"name":"DVP","value":"44.92","change":"5.67","open":72.1,"high":73.1,"low":72.1,"close":73.1,"timestamp":1714608000},{"name":"SCR","value":"35.11","change":"-0.40","open":6.6,"high":6.65,"low":6.53,"close":6.58,"timestamp":1714608000},{"name":"QCG","value":"62.49","change":"4.07","open":15,"high":16.25,"low":14.5,"close":16.1,"timestamp":1714608000},{"name":"PET","value":"42.48","change":"2.60","open":25,"high":25,"low":24.5,"close":24.75,"timestamp":1714608000},{"name":"STK","value":"38.45","change":"4.30","open":29,"high":29.1,"low":28.45,"close":28.75,"timestamp":1714608000},{"name":"GAB","value":"100.00","change":"0.00","open":196.4,"high":196.4,"low":196.4,"close":196.4,"timestamp":1714608000},{"name":"KSB","value":"35.72","change":"-0.98","open":21.6,"high":21.65,"low":21.05,"close":21.25,"timestamp":1714608000},{"name":"VPD","value":"54.00","change":"4.86","open":25.4,"high":26.45,"low":25.4,"close":26.2,"timestamp":1714608000},{"name":"BMI","value":"43.42","change":"0.00","open":23,"high":23.1,"low":22.9,"close":23,"timestamp":1714608000},{"name":"SEA","value":"47.84","change":"0.00","open":30,"high":30,"low":30,"close":30,"timestamp":1714608000},{"name":"AGG","value":"57.48","change":"9.99","open":22.1,"high":23.2,"low":22,"close":23.2,"timestamp":1714608000},{"name":"PAP","value":"67.38","change":"-0.00","open":25.2,"high":25.2,"low":25.2,"close":25.2,"timestamp":1714608000},{"name":"IDI","value":"42.57","change":"-1.46","open":11.5,"high":11.5,"low":11.3,"close":11.4,"timestamp":1705881600},{"name":"TDP","value":"51.69","change":"5.17","open":32.25,"high":33.4,"low":32.25,"close":33.4,"timestamp":1714608000},{"name":"KHG","value":"28.33","change":"-0.25","open":5.4,"high":5.46,"low":5.28,"close":5.38,"timestamp":1714608000},{"name":"CSV","value":"48.29","change":"3.73","open":57,"high":58.3,"low":56,"close":57.9,"timestamp":1714608000},{"name":"VOC","value":"27.34","change":"-2.56","open":18.5,"high":18.5,"low":18.3,"close":18.4,"timestamp":1714608000},{"name":"PTI","value":"49.41","change":"10.05","open":32.2,"high":33.8,"low":31.7,"close":33.8,"timestamp":1714608000},{"name":"CDN","value":"39.34","change":"-7.05","open":26.1,"high":26.3,"low":26,"close":26.3,"timestamp":1714608000},{"name":"PGI","value":"60.99","change":"17.30","open":26.721,"high":26.721,"low":26.721,"close":26.721,"timestamp":1685923200},{"name":"BVS","value":"48.69","change":"-4.50","open":35.4,"high":35.4,"low":33,"close":34,"timestamp":1714608000},{"name":"DCF","value":"39.13","change":"-2.55","open":40,"high":40,"low":40,"close":40,"timestamp":1714608000},{"name":"HTM","value":"35.06","change":"0.00","open":11.3,"high":11.3,"low":11.3,"close":11.3,"timestamp":1714608000},{"name":"PLC","value":"44.64","change":"2.40","open":31.5,"high":31.5,"low":30.6,"close":31,"timestamp":1705276800},{"name":"CTF","value":"70.71","change":"5.25","open":30.4,"high":31.2,"low":30.4,"close":30.7,"timestamp":1714608000},{"name":"NTL","value":"78.22","change":"-2.20","open":36.482,"high":38.136,"low":36.143,"close":36.609,"timestamp":1635120000},{"name":"VFG","value":"63.49","change":"2.05","open":29.947,"high":29.947,"low":29.886,"close":29.947,"timestamp":1602547200},{"name":"HAN","value":"40.00","change":"-0.98","open":13.588,"high":13.772,"low":13.588,"close":13.588,"timestamp":1641859200},{"name":"LCG","value":"42.42","change":"3.44","open":4.092,"high":4.122,"low":4.063,"close":4.092,"timestamp":1581897600},{"name":"TNG","value":"64.27","change":"0.00","open":9.548,"high":9.755,"low":9.409,"close":9.548,"timestamp":1606176000},{"name":"VGR","value":"43.93","change":"0.00","open":28.678,"high":28.678,"low":28.678,"close":28.678,"timestamp":1657065600},{"name":"FLC","value":"90.96","change":"1.24","open":6.575,"high":6.988,"low":6.36,"close":6.962,"timestamp":1488153600},{"name":"FCN","value":"71.86","change":"-3.76","open":13.574,"high":13.574,"low":13.291,"close":13.332,"timestamp":1544140800},{"name":"TIG","value":"67.32","change":"2.92","open":1.915,"high":2.075,"low":1.915,"close":1.968,"timestamp":1569369600},{"name":"TBC","value":"71.42","change":"0.00","open":14.034,"high":14.034,"low":14.034,"close":14.034,"timestamp":1497225600},{"name":"TV2","value":"33.15","change":"-2.62","open":10.504,"high":10.656,"low":10.504,"close":10.536,"timestamp":1507075200},{"name":"HQC","value":"27.39","change":"0.00","open":4.907,"high":4.907,"low":4.722,"close":4.907,"timestamp":1451347200},{"name":"SAM","value":"45.31","change":"0.00","open":6.39,"high":6.516,"low":6.266,"close":6.39,"timestamp":1501718400},{"name":"SGN","value":"40.44","change":"-5.88","open":81.385,"high":81.385,"low":81.029,"close":81.029,"timestamp":1539734400},{"name":"BWS","value":"57.75","change":"0.00","open":27.875,"high":27.875,"low":27.875,"close":27.875,"timestamp":1599523200},{"name":"VCW","value":"53.23","change":"-0.87","open":28.586,"high":28.586,"low":28.586,"close":28.586,"timestamp":1540339200},{"name":"SHI","value":"52.78","change":"-4.61","open":5.616,"high":5.696,"low":5.534,"close":5.534,"timestamp":1446163200},{"name":"TNH","value":"40.43","change":"1.57","open":20.6,"high":20.95,"low":20.6,"close":20.7,"timestamp":1714608000},{"name":"GIL","value":"61.39","change":"1.15","open":20.872,"high":21.95,"low":20.151,"close":21.05,"timestamp":1470096000},{"name":"LAS","value":"42.90","change":"-4.12","open":11.094,"high":11.176,"low":10.932,"close":11.012,"timestamp":1510876800},{"name":"DNP","value":"38.33","change":"-3.00","open":16.132,"high":16.285,"low":15.978,"close":16.285,"timestamp":1512345600},{"name":"APG","value":"65.32","change":"5.20","open":3.393,"high":3.448,"low":3.393,"close":3.448,"timestamp":1410134400},{"name":"NCT","value":"61.03","change":"3.06","open":53.613,"high":54.214,"low":53.613,"close":53.989,"timestamp":1614211200},{"name":"LIX","value":"49.47","change":"0.00","open":9.397,"high":9.397,"low":9.397,"close":9.397,"timestamp":1407801600},{"name":"DHB","value":"84.56","change":"0.00","open":6.4,"high":6.4,"low":6.4,"close":6.4,"timestamp":1550102400},{"name":"CKG","value":"66.54","change":"10.39","open":22.091,"high":23.364,"low":22.091,"close":23.364,"timestamp":1633478400},{"name":"DMC","value":"88.09","change":"3.11","open":38.086,"high":40.43,"low":38.086,"close":40.137,"timestamp":1457654400},{"name":"IFS","value":"44.86","change":"0.00","open":8.496,"high":8.496,"low":8.496,"close":8.496,"timestamp":1515715200},{"name":"HPX","value":"55.91","change":"6.06","open":17.326,"high":17.424,"low":17.326,"close":17.424,"timestamp":1578009600},{"name":"MVB","value":"49.78","change":"0.00","open":13.532,"high":13.532,"low":12.467,"close":13.123,"timestamp":1620172800},{"name":"HBC","value":"51.13","change":"0.00","open":3.289,"high":3.328,"low":3.251,"close":3.289,"timestamp":1402963200},{"name":"DHT","value":"60.47","change":"1.24","open":4.555,"high":4.555,"low":4.395,"close":4.531,"timestamp":1469750400},{"name":"VFC","value":"89.89","change":"0.18","open":11.834,"high":11.908,"low":9.899,"close":10.941,"timestamp":1414108800},{"name":"AAS","value":"68.05","change":"2.87","open":17.01,"high":17.237,"low":16.67,"close":17.18,"timestamp":1639008000},{"name":"BRR","value":"30.77","change":"-0.00","open":7.32,"high":7.32,"low":7.32,"close":7.32,"timestamp":1527552000},{"name":"ABI","value":"43.01","change":"-0.00","open":2.065,"high":2.065,"low":2.065,"close":2.065,"timestamp":1386720000},{"name":"TCD","value":"46.85","change":"1.34","open":5.861,"high":5.896,"low":5.462,"close":5.896,"timestamp":1525996800},{"name":"PHS","value":"52.57","change":"0.00","open":2.048,"high":2.048,"low":2.048,"close":2.048,"timestamp":1386892800},{"name":"NBB","value":"51.54","change":"-13.89","open":7.749,"high":7.801,"low":7.452,"close":7.452,"timestamp":1386720000},{"name":"PAT","value":"45.14","change":"-1.71","open":69.765,"high":69.855,"low":69.222,"close":69.584,"timestamp":1685664000},{"name":"APH","value":"50.36","change":"5.40","open":7.11,"high":7.27,"low":7.07,"close":7.25,"timestamp":1679356800},{"name":"OGC","value":"47.68","change":"-8.00","open":11.4,"high":11.4,"low":10.9,"close":11,"timestamp":1386720000},{"name":"SBA","value":"48.67","change":"0.00","open":4.957,"high":4.957,"low":4.904,"close":4.957,"timestamp":1447286400},{"name":"VLB","value":"48.69","change":"0.00","open":31.819,"high":31.819,"low":31.819,"close":31.819,"timestamp":1504569600},{"name":"ASG","value":"50.46","change":"-1.79","open":20.455,"high":21,"low":20.455,"close":21,"timestamp":1690329600},{"name":"PPH","value":"62.29","change":"0.00","open":7.691,"high":7.691,"low":7.691,"close":7.691,"timestamp":1533254400},{"name":"TLP","value":"43.19","change":"0.94","open":7.711,"high":7.711,"low":7.711,"close":7.711,"timestamp":1542758400},{"name":"PRE","value":"39.75","change":"0.00","open":17.5,"high":17.5,"low":17.5,"close":17.5,"timestamp":1713484800},{"name":"VFS","value":"56.17","change":"2.63","open":8.945,"high":9.633,"low":8.846,"close":9.141,"timestamp":1623628800},{"name":"NET","value":"36.95","change":"3.80","open":17.676,"high":18.092,"low":17.438,"close":17.854,"timestamp":1493856000},{"name":"RTB","value":"43.00","change":"-7.82","open":6.091,"high":6.091,"low":6.091,"close":6.091,"timestamp":1508284800},{"name":"VCP","value":"63.16","change":"-8.36","open":12.511,"high":12.511,"low":12.511,"close":12.511,"timestamp":1511481600},{"name":"ELC","value":"60.68","change":"1.40","open":7.193,"high":7.38,"low":7.193,"close":7.286,"timestamp":1435708800},{"name":"CQN","value":"56.66","change":"4.77","open":27,"high":29,"low":27,"close":29,"timestamp":1713484800},{"name":"FIC","value":"24.45","change":"0.48","open":22.7,"high":22.9,"low":22.7,"close":22.8,"timestamp":1686700800},{"name":"SVC","value":"61.33","change":"10.07","open":34.075,"high":34.075,"low":34.075,"close":34.075,"timestamp":1601337600},{"name":"TSJ","value":"55.69","change":"0.00","open":20.609,"high":20.609,"low":20.609,"close":20.609,"timestamp":1654473600},{"name":"SGT","value":"37.29","change":"-1.96","open":5.028,"high":5.028,"low":4.986,"close":4.986,"timestamp":1510531200},{"name":"LHG","value":"30.96","change":"-2.32","open":31.9,"high":32.5,"low":31.5,"close":31.75,"timestamp":1713484800}],
+      selectedTags: JSON.parse(localStorage.getItem('selectedTags')) || [],
+      lastUpdated: '',
+      myScatterChart: null
+    },
+    computed: {
+      tagOptions() {
+        return this.originalData.map(item => item.name);
+      },
+      filteredData() {
+        return this.selectedTags.length > 0
+               ? this.originalData.filter(item => this.selectedTags.includes(item.name))
+               : this.originalData;
+      }
+    },
+    methods: {
+      createScatterData(data) {
+        return {
+          datasets: [
+            {
+              label: 'Symbol',
+              data: data.map((item, index) => ({x: index + 1, y: item.value})),
+              backgroundColor: 'rgba(255, 99, 132, 1)',
+              pointRadius: 6,
+            },
+            ...data.map((item, index) => ({
+              data: [
+                {x: index + 1, y: item.value - item.change},
+                {x: index + 1, y: item.value}
+              ],
+              borderColor: item.change >= 0 ? 'green' : 'red',
+              borderWidth: 2,
+              showLine: true,
+              fill: false,
+              pointRadius: 0,
+              tension: 0,
+              borderDash: [5, 5]
+            }))
+          ]
+        };
+      },
+      updateChart() {
+        this.myScatterChart.data = this.createScatterData(this.filteredData);
+        this.myScatterChart.update();
+        this.lastUpdated = new Date().toLocaleString();
+      },
+      saveSelectedTags() {
+        localStorage.setItem('selectedTags', JSON.stringify(this.selectedTags));
+      },
+      clearSelectedTags() {
+        this.selectedTags = [];
+      },
+      vn30() {
+        this.selectedTags =
+          ['ACB', 'BCM', 'BID', 'BVH', 'CTG', 'FPT', 'GAS', 'GVR', 'HDB', 'HPG', 'MBB', 'MSN', 'MWG', 'PLX',
+           'POW', 'SAB', 'SHB', 'SSB', 'SSI', 'STB', 'TCB', 'TPB', 'VCB', 'VHM', 'VIB', 'VIC', 'VJC', 'VNM',
+           'VPB', 'VRE']
+      },
+      vn100() {
+        this.selectedTags =
+          ['AAA', 'ACB', 'AGG', 'ANV', 'ASM', 'BCG', 'BCM', 'BID', 'BMP', 'BSI', 'BVH', 'BWE', 'CII', 'CMG',
+           'CRE', 'CTD', 'CTG', 'CTR', 'DBC', 'DCM', 'DGC', 'DGW', 'DHC', 'DIG', 'DPM', 'DXG', 'DXS', 'EIB',
+           'EVF', 'FPT', 'FRT', 'FTS', 'GAS', 'GEX', 'GMD', 'GVR', 'HAG', 'HCM', 'HDB', 'HDC', 'HDG', 'HHV',
+           'HPG', 'HSG', 'HT1', 'IMP', 'KBC', 'KDC', 'KDH', 'KOS', 'LPB', 'MBB', 'MSB', 'MSN', 'MWG', 'NKG',
+           'NLG', 'NT2', 'OCB', 'PAN', 'PC1', 'PDR', 'PHR', 'PLX', 'PNJ', 'POW', 'PPC', 'PTB', 'PVD', 'PVT',
+           'REE', 'SAB', 'SBT', 'SCS', 'SHB', 'SJS', 'SSB', 'SSI', 'STB', 'SZC', 'TCB', 'TCH', 'TLG', 'TPB',
+           'VCB', 'VCG', 'VCI', 'VGC', 'VHC', 'VHM', 'VIB', 'VIC', 'VIX', 'VJC', 'VND', 'VNM', 'VPB', 'VPI',
+           'VRE', 'VSH']
+      },
+      vnDiamond() {
+        this.selectedTags =
+          ['ACB', 'BMP', 'CTG', 'FPT', 'GMD', 'HDB', 'KDH', 'MBB', 'MSB', 'NLG', 'OCB', 'PNJ', 'REE', 'TCB',
+           'TPB', 'VIB', 'VPB', 'VRE']
+      },
+      hnx30() {
+        this.selectedTags =
+          ['BCC', 'BVS', 'CAP', 'CEO', 'DTD', 'DVM', 'DXP', 'HLD', 'HUT', 'IDC', 'L14', 'L18', 'LAS', 'LHC',
+           'MBS', 'NBC', 'PLC', 'PSI', 'PVC', 'PVG', 'PVS', 'SHS', 'SLS', 'TDN', 'TIG', 'TNG', 'TVD', 'VC3',
+           'VCS', 'VIG']
+      }
+    },
+    watch: {
+      selectedTags: {
+        handler() {
+          this.updateChart();
+          this.saveSelectedTags();
+        },
+        deep: true
+      }
+    },
+    mounted() {
+      const ctx = document.getElementById('myScatterChart').getContext('2d');
+      const config = {
+        type: 'scatter',
+        data: this.createScatterData(this.filteredData),
+        options: {
+          layout: {
+            padding: 10
+          },
+          scales: {
+            x: {
+              type: 'linear',
+              position: 'bottom'
+            },
+            y: {
+              type: 'linear',
+              position: 'left',
+              // min: -100,
+              // max: 100
+            },
+          },
+          plugins: {
+            title: {
+              display: true,
+              text: 'Biểu đồ RSI'
+            },
+            legend: {
+              display: false
+            },
+            datalabels: {
+              anchor: 'end',
+              align: 'top',
+              offset: 5,
+              formatter: function (value, context) {
+                const dataIndex = context.dataIndex;
+                if (context.datasetIndex === 0 && dataIndex < this.filteredData.length) {
+                  return this.filteredData[dataIndex].name;
+                } else {
+                  return null;
+                }
+              }.bind(this),
+              color: '#444',
+              font: {
+                weight: 'bold'
+              }
+            },
+            tooltip: {
+              callbacks: {
+                title: function (context) {
+                  let element = this.filteredData[context[0].dataIndex]
+                  return `Mã: ${element.name}\nGiá mở cửa: ${element.open}\nGiá cao nhất: ${element.high}\nGiá thấp nhất: ${element.low}\nGiá đóng cửa: ${element.close}`;
+                }.bind(this),
+                footer: function (context) {
+                  let element = this.filteredData[context[0].dataIndex]
+                  return `Thời gian: ${new Date(element.timestamp * 1000).toLocaleString()}`
+                }.bind(this),
+                label: function (context) {
+                  return 'RSI: ' + context.parsed.y
+                }
+              }
+            }
+          }
+        },
+        plugins: [ChartDataLabels]
+      };
+      this.myScatterChart = new Chart(ctx, config);
+      this.lastUpdated = new Date().toLocaleString();
+    }
+  });
+</script>
+<script src="https://code.jquery.com/jquery-3.5.1.slim.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@popperjs/core@2.5.2/dist/umd/popper.min.js"></script>
+<script src="https://stackpath.bootstrapcdn.com/bootstrap/4.5.2/js/bootstrap.min.js"></script>
+</body>
+</html>
